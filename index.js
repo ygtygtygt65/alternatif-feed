@@ -1,38 +1,57 @@
 import express from 'express';
 import cors from 'cors';
-import { getArtigercekFeed } from './sources/artigercek.js';
-import { getT24Feed } from './sources/t24.js'; // ✅ T24 eklendi
+import scrapeT24 from './sources/t24.js';
+import scrapeArtigercek from './sources/artigercek.js'; // ✅ Artı Gerçek eklendi
 
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(cors());
 
-app.get('/', (req, res) => {
-  res.send('✅ Alternatif Feed sunucusu çalışıyor');
+const feeds = [
+  { path: '/t24', scraper: scrapeT24 },
+  { path: '/artigercek', scraper: scrapeArtigercek }, // ✅ Artı Gerçek feed tanımı
+];
+
+feeds.forEach(({ path, scraper }) => {
+  app.get(path, async (req, res) => {
+    try {
+      const feed = await scraper();
+      const xml = buildRssXml(feed);
+      res.set('Content-Type', 'application/rss+xml');
+      res.send(xml);
+    } catch (err) {
+      console.error(`Hata (${path}):`, err.message);
+      res.status(500).send('RSS feed oluşturulamadı.');
+    }
+  });
 });
 
-app.get('/rss/artigercek', async (req, res) => {
-  try {
-    const xml = await getArtigercekFeed();
-    res.set('Content-Type', 'application/rss+xml');
-    res.send(xml);
-  } catch (err) {
-    console.error('Artigercek feed hatası:', err);
-    res.status(500).send('Artigercek feed üretilemedi');
-  }
-});
-
-app.get('/rss/t24', async (req, res) => {
-  try {
-    const xml = await getT24Feed();
-    res.set('Content-Type', 'application/rss+xml');
-    res.send(xml);
-  } catch (err) {
-    console.error('T24 feed hatası:', err);
-    res.status(500).send('T24 feed üretilemedi');
-  }
-});
+function buildRssXml(feed) {
+  return `
+    <?xml version="1.0"?>
+    <rss version="2.0">
+      <channel>
+        <title>${feed.title}</title>
+        <link>${feed.link}</link>
+        <description>${feed.description}</description>
+        <language>${feed.language}</language>
+        ${feed.items
+          .map(
+            (item) => `
+          <item>
+            <title>${item.title}</title>
+            <link>${item.link}</link>
+            <description>${item.description || ''}</description>
+            <pubDate>${item.pubDate}</pubDate>
+          </item>
+        `
+          )
+          .join('')}
+      </channel>
+    </rss>
+  `.trim();
+}
 
 app.listen(port, () => {
   console.log(`✅ Sunucu çalışıyor: http://localhost:${port}`);
