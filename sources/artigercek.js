@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as cheerio from 'cheerio'; // ✅ düzeltildi
+import * as cheerio from 'cheerio';
 
 export default async function scrapeArtigercek() {
   const url = 'https://artigercek.com';
