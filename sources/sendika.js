@@ -1,5 +1,6 @@
 import axios from 'axios';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
+
 
 export default async function scrapeSendika() {
   const url = 'https://sendika.org/kategori/haberler/';
