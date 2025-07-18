@@ -9,11 +9,11 @@ export async function getT24Feed() {
 
   const items = [];
 
-  $('.spot-news').slice(0, 5).each((i, el) => {
-    const title = $(el).find('.title a').text().trim();
-    const relativeLink = $(el).find('.title a').attr('href');
-    const link = relativeLink.startsWith('http') ? relativeLink : siteURL + relativeLink;
-    const description = $(el).find('.spot').text().trim();
+  $('.widget-news-list .widget-news-list__item').slice(0, 5).each((i, el) => {
+    const title = $(el).find('.widget-news-list__header a').text().trim();
+    const relativeLink = $(el).find('.widget-news-list__header a').attr('href');
+    const link = relativeLink?.startsWith('http') ? relativeLink : siteURL + relativeLink;
+    const description = $(el).find('.widget-news-list__spot').text().trim();
     const pubDate = new Date().toUTCString();
 
     if (title && link) {
@@ -36,6 +36,11 @@ export async function getT24Feed() {
       .ele('description').txt(item.description || '').up()
       .ele('pubDate').txt(item.pubDate).up()
     .up();
+  });
+
+  return rss.end({ prettyPrint: true });
+}
+
   });
 
   return rss.end({ prettyPrint: true });
