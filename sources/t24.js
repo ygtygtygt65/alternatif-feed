@@ -40,8 +40,3 @@ export async function getT24Feed() {
 
   return rss.end({ prettyPrint: true });
 }
-
-  });
-
-  return rss.end({ prettyPrint: true });
-}
