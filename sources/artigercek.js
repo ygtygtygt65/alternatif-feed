@@ -1,42 +1,29 @@
 import axios from 'axios';
-import * as cheerio from 'cheerio';
-import { create } from 'xmlbuilder2';
+import cheerio from 'cheerio';
 
-export async function getArtigercekFeed() {
-  const siteURL = 'https://artigercek.com';
-  const { data } = await axios.get(siteURL);
+export default async function scrapeArtigercek() {
+  const url = 'https://artigercek.com';
+  const { data } = await axios.get(url);
   const $ = cheerio.load(data);
 
   const items = [];
 
-  $('.spot-news-item').slice(0, 5).each((i, el) => {
-    const title = $(el).find('.spot-news-title a').text().trim();
-    const relativeLink = $(el).find('.spot-news-title a').attr('href');
-    const link = relativeLink?.startsWith('http') ? relativeLink : siteURL + relativeLink;
-    const description = $(el).find('.spot-news-summary').text().trim();
+  $('a.card-title').each((_, el) => {
+    const title = $(el).text().trim();
+    const href = $(el).attr('href');
+    const link = href.startsWith('http') ? href : `${url}${href}`;
     const pubDate = new Date().toUTCString();
 
     if (title && link) {
-      items.push({ title, link, description, pubDate });
+      items.push({ title, link, pubDate });
     }
   });
 
-  const rss = create({ version: '1.0' })
-    .ele('rss', { version: '2.0' })
-    .ele('channel')
-      .ele('title').txt('Artı Gerçek Haberler').up()
-      .ele('link').txt(siteURL).up()
-      .ele('description').txt('Alternatif GPT için özel RSS feed').up()
-      .ele('language').txt('tr-TR').up();
-
-  items.forEach(item => {
-    rss.ele('item')
-      .ele('title').txt(item.title).up()
-      .ele('link').txt(item.link).up()
-      .ele('description').txt(item.description || '').up()
-      .ele('pubDate').txt(item.pubDate).up()
-    .up();
-  });
-
-  return rss.end({ prettyPrint: true });
+  return {
+    title: 'Artı Gerçek Haberler',
+    link: url,
+    description: 'Alternatif GPT için özel RSS feed (Artı Gerçek)',
+    language: 'tr-TR',
+    items,
+  };
 }
