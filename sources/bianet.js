@@ -1,6 +1,6 @@
 // sources/bianet.js
 import axios from 'axios';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 
 const scrapeBianet = async () => {
   const { data } = await axios.get('https://bianet.org');
