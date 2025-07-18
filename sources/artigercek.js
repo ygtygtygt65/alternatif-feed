@@ -9,11 +9,11 @@ export async function getArtigercekFeed() {
 
   const items = [];
 
-  $('.newsItem').slice(0, 5).each((i, el) => {
-    const title = $(el).find('h3').text().trim();
-    const relativeLink = $(el).find('a').attr('href');
-    const link = relativeLink.startsWith('http') ? relativeLink : siteURL + relativeLink;
-    const description = $(el).find('p').text().trim();
+  $('.main-news .card').slice(0, 5).each((i, el) => {
+    const title = $(el).find('.card-title a').text().trim();
+    const relativeLink = $(el).find('.card-title a').attr('href');
+    const link = relativeLink?.startsWith('http') ? relativeLink : siteURL + relativeLink;
+    const description = $(el).find('.card-text').text().trim();
     const pubDate = new Date().toUTCString();
 
     if (title && link) {
@@ -40,4 +40,3 @@ export async function getArtigercekFeed() {
 
   return rss.end({ prettyPrint: true });
 }
-
