@@ -10,9 +10,9 @@ async function scrapeT24() {
 
   $('a.hoverable').each((_, el) => {
     const title = $(el).text().trim();
-    const link = url + $(el).attr('href');
+    const href = $(el).attr('href');
+    const link = href.startsWith('http') ? href : `${url}${href}`;
 
-    // Filtre: sadece haber linkleri, boş başlık yok
     if (title && link.includes('/haber/')) {
       items.push({
         title,
@@ -32,3 +32,4 @@ async function scrapeT24() {
 }
 
 export default scrapeT24;
+
