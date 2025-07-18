@@ -1,6 +1,7 @@
 // sources/evrensel.js
 import axios from 'axios';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
+
 
 const scrapeEvrensel = async () => {
   const { data } = await axios.get('https://www.evrensel.net/');
