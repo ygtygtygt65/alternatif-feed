@@ -1,28 +1,34 @@
-import Parser from 'rss-parser';
-import { create } from 'xmlbuilder2';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
-const parser = new Parser();
+async function scrapeT24() {
+  const url = 'https://t24.com.tr';
+  const { data: html } = await axios.get(url);
+  const $ = cheerio.load(html);
 
-export async function getT24Feed() {
-  const feed = await parser.parseURL('https://t24.com.tr/rss');
-  const items = feed.items.slice(0, 5);
+  const items = [];
 
-  const rss = create({ version: '1.0' })
-    .ele('rss', { version: '2.0' })
-    .ele('channel')
-      .ele('title').txt('T24 Haberler').up()
-      .ele('link').txt('https://t24.com.tr').up()
-      .ele('description').txt('T24 RSS feed - Alternatif GPT').up()
-      .ele('language').txt('tr-TR').up();
+  $('a.hoverable').each((_, el) => {
+    const title = $(el).text().trim();
+    const link = url + $(el).attr('href');
 
-  items.forEach(item => {
-    rss.ele('item')
-      .ele('title').txt(item.title).up()
-      .ele('link').txt(item.link).up()
-      .ele('description').txt(item.contentSnippet || '').up()
-      .ele('pubDate').txt(item.pubDate || '').up()
-    .up();
+    // Filtre: sadece haber linkleri, boş başlık yok
+    if (title && link.includes('/haber/')) {
+      items.push({
+        title,
+        link,
+        pubDate: new Date().toUTCString(),
+      });
+    }
   });
 
-  return rss.end({ prettyPrint: true });
+  return {
+    title: 'T24 Haberler',
+    link: url,
+    description: 'T24 RSS feed - Alternatif GPT',
+    language: 'tr-TR',
+    items,
+  };
 }
+
+export default scrapeT24;
