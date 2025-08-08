@@ -1,0 +1,17 @@
+{
+  "name": "alternatif-rss-cache-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Render-ready RSS cache & merge server for Alternatif GPT. Pulls from RSS.app or native RSS, caches, and exposes unified JSON endpoint.",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "fast-xml-parser": "^4.4.0",
+    "node-cache": "^5.1.2",
+    "cors": "^2.8.5"
+  }
+}
