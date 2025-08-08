@@ -11,9 +11,17 @@ const FEED_URLS = (process.env.FEED_URLS || "")
   .map(s => s.trim())
   .filter(Boolean);
 
-const CACHE_TTL_SECONDS = Number(process.env.CACHE_TTL_SECONDS || 300); // 5 dk
+const CACHE_TTL_SECONDS = Number(process.env.CACHE_TTL_SECONDS || 300); // default 5 dk
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || "*";
-const TITLE_FILTER = process.env.TITLE_FILTER || "";
+
+// Yeni filtre env değişkenleri
+const INCLUDE_TITLE = process.env.INCLUDE_TITLE || "";
+const EXCLUDE_TITLE = process.env.EXCLUDE_TITLE || "";
+const ONLY_DOMAINS = (process.env.ONLY_DOMAINS || "")
+  .split(";")
+  .map(s => s.trim().replace(/^www\./, ""))
+  .filter(Boolean);
+
 const BASIC_USER = process.env.BASIC_USER;
 const BASIC_PASS = process.env.BASIC_PASS;
 
@@ -57,10 +65,12 @@ function normalizeDomain(url) {
   }
 }
 
-// Her bir item'i {title, link, published, source} formatına normalize et
+// Başlık + açıklama ekleyen normalizeItem
 function normalizeItem(raw, sourceUrl) {
   let title = raw?.title?.["#text"] || raw?.title || "";
   let link = raw?.link?.href || raw?.link || raw?.url || "";
+  let description = raw?.description || raw?.summary || raw?.contentSnippet || "";
+
   let pub =
     raw?.pubDate ||
     raw?.published ||
@@ -70,9 +80,10 @@ function normalizeItem(raw, sourceUrl) {
     raw?.date ||
     null;
 
-  // JSON şekilleri (ör. RSS.app) için kaba tahminler
+  // JSON şekilleri (ör. RSS.app) için tahminler
   if (!title && raw?.content?.title) title = raw.content.title;
   if (!link && raw?.content?.link) link = raw.content.link;
+  if (!description && raw?.content?.description) description = raw.content.description;
   if (!pub && raw?.content?.pubDate) pub = raw.content.pubDate;
 
   const published = toISODate(pub) || new Date().toISOString();
@@ -80,6 +91,7 @@ function normalizeItem(raw, sourceUrl) {
 
   return {
     title: String(title || "").trim(),
+    description: String(description || "").trim(),
     link: String(link || "").trim(),
     published,
     source
@@ -111,6 +123,32 @@ async function fetchOne(url) {
   }
 }
 
+// Domain filtresi
+function passDomainRule(item) {
+  if (!ONLY_DOMAINS.length) return true;
+  const host = (item.source || "").replace(/^www\./, "");
+  return ONLY_DOMAINS.includes(host);
+}
+
+// Başlık + açıklama ile filtreleme
+function passIncludeExclude(item, qParam) {
+  const textToSearch = `${item.title} ${item.description}`;
+
+  if (qParam) {
+    const rxQ = new RegExp(qParam, "i");
+    if (!rxQ.test(textToSearch)) return false;
+  }
+  if (INCLUDE_TITLE) {
+    const rxIn = new RegExp(INCLUDE_TITLE, "i");
+    if (!rxIn.test(textToSearch)) return false;
+  }
+  if (EXCLUDE_TITLE) {
+    const rxEx = new RegExp(EXCLUDE_TITLE, "i");
+    if (rxEx.test(textToSearch)) return false;
+  }
+  return true;
+}
+
 async function refreshAll() {
   if (!FEED_URLS.length) return [];
   const key = "merged";
@@ -124,10 +162,7 @@ async function refreshAll() {
     if (r.status === "fulfilled" && Array.isArray(r.value)) items = items.concat(r.value);
   }
 
-  if (TITLE_FILTER) {
-    const rx = new RegExp(TITLE_FILTER, "i");
-    items = items.filter(it => rx.test(it.title || ""));
-  }
+  items = items.filter(passDomainRule);
 
   items.sort((a, b) => new Date(b.published) - new Date(a.published));
 
@@ -143,7 +178,7 @@ async function refreshAll() {
   return payload;
 }
 
-// Arkaplanda periyodik refresh (uyandıktan sonra 1. isteği hızlandırır)
+// Arka planda periyodik yenileme
 setInterval(async () => {
   try { await refreshAll(); } catch (e) { console.error("Background refresh error", e); }
 }, Math.max(CACHE_TTL_SECONDS * 1000, 30_000));
@@ -153,10 +188,14 @@ app.get("/health", (req, res) => res.json({ ok: true, time: new Date().toISOStri
 app.get("/feed", async (req, res) => {
   try {
     let data = await refreshAll();
+    const q = (req.query.q || "").toString();
     const limit = Number(req.query.limit || 0);
-    if (limit > 0) data = { ...data, items: data.items.slice(0, limit) };
+
+    let items = data.items.filter(it => passIncludeExclude(it, q));
+
+    if (limit > 0) items = items.slice(0, limit);
     res.set("Cache-Control", "public, max-age=30");
-    res.json(data);
+    res.json({ ...data, totalItems: items.length, items });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "failed_to_fetch" });
